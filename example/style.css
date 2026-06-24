@@ -16,6 +16,33 @@
   box-sizing: border-box;
 }
 
+/* Scrollbars — match the dark theme. */
+* {
+  scrollbar-color: #2a3148 transparent;
+  scrollbar-width: thin;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3148;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a425e;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -50,12 +77,17 @@ header {
 .brand strong { font-size: 16px; }
 .subtitle { color: var(--text-muted); font-size: 12px; }
 
-header nav { display: flex; gap: 16px; }
+header nav { display: flex; gap: 14px; align-items: center; }
 header nav a {
   color: var(--text-muted);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 80ms;
 }
 header nav a:hover { color: var(--text); }
+header nav a svg { display: block; fill: currentColor; }
 
 .layout {
   flex: 1;
@@ -69,7 +101,10 @@ header nav a:hover { color: var(--text); }
   border-right: 1px solid var(--panel-border);
   padding: 12px;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
+.panel > * { min-width: 0; max-width: 100%; }
 .output-panel {
   border-right: none;
   border-left: 1px solid var(--panel-border);
@@ -80,7 +115,9 @@ header nav a:hover { color: var(--text); }
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  min-width: 0;
 }
+.row > * { min-width: 0; }
 .row label { color: var(--text-muted); font-size: 12px; }
 
 select, button, input[type="number"], input[type="text"] {
@@ -92,7 +129,15 @@ select, button, input[type="number"], input[type="text"] {
   font-family: inherit;
   font-size: 12px;
 }
-select { flex: 1; }
+.row select {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.row button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 input[type="number"] { width: 56px; }
 button {
   cursor: pointer;
@@ -112,6 +157,8 @@ details {
   border: 1px solid var(--panel-border);
   border-radius: 4px;
   background: #131623;
+  min-width: 0;
+  overflow: hidden;
 }
 details summary {
   cursor: pointer;

@@ -2,31 +2,65 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const BIN_GAP = 8;       // spacing between bins along X
-const LABEL_SCALE = 4;   // world units per font line
 
+/**
+ * Create a billboard text sprite sized to fit `text`. The returned sprite has
+ * its scale set to (textAspect, 1, 1) so the caller can multiply by a single
+ * "label height" scalar to size it in world units without squashing text.
+ */
 function makeSpriteLabel(text) {
-  const canvas = document.createElement('canvas');
-  const dpr = window.devicePixelRatio || 1;
   const fontSize = 32;
-  canvas.width = 128 * dpr;
-  canvas.height = 64 * dpr;
+  const fontStack = 'ui-monospace, Menlo, monospace';
+  const padX = 14;
+  const padY = 8;
+
+  // Measure first.
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = `bold ${fontSize}px ${fontStack}`;
+  const textWidth = Math.ceil(measure.measureText(text).width);
+
+  const cssW = textWidth + padX * 2;
+  const cssH = fontSize + padY * 2;
+
+  const dpr = window.devicePixelRatio || 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
+
+  // Pill background
   ctx.fillStyle = 'rgba(15, 17, 21, 0.85)';
-  ctx.roundRect ? ctx.roundRect(0, 0, 128, 64, 8) : ctx.rect(0, 0, 128, 64);
-  ctx.fill();
+  const r = 6;
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(0, 0, cssW, cssH, r);
+    ctx.fill();
+  } else {
+    ctx.fillRect(0, 0, cssW, cssH);
+  }
+
+  // Text
   ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${fontSize}px ui-monospace, Menlo, monospace`;
+  ctx.font = `bold ${fontSize}px ${fontStack}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 64, 32);
+  ctx.fillText(text, cssW / 2, cssH / 2);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.anisotropy = 4;
   const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(LABEL_SCALE, LABEL_SCALE * 0.5, 1);
+
+  const aspect = cssW / cssH;
+  sprite.scale.set(aspect, 1, 1);
+  sprite.userData.aspect = aspect;
   return sprite;
+}
+
+function setLabelHeight(sprite, height) {
+  const aspect = sprite.userData.aspect ?? 2;
+  sprite.scale.set(aspect * height, height, 1);
 }
 
 function hashColor(seed) {
@@ -132,8 +166,9 @@ export class Scene {
 
       // Bin label
       const binLabel = makeSpriteLabel(bin.partno);
-      binLabel.position.set(bw / 2, bh + 3, bd / 2);
-      binLabel.scale.set(bw * 0.5, bw * 0.25, 1);
+      const binLabelHeight = Math.max(2, Math.min(bw, bd) * 0.18);
+      setLabelHeight(binLabel, binLabelHeight);
+      binLabel.position.set(bw / 2, bh + binLabelHeight * 0.8, bd / 2);
       binBase.add(binLabel);
 
       // Items inside the bin
@@ -168,8 +203,9 @@ export class Scene {
 
         // Load order label
         const lbl = makeSpriteLabel(String(item.loadOrder));
-        lbl.position.set(px + iw / 2, py + ih + 1.5, pz + id / 2);
-        lbl.scale.set(Math.max(2, iw * 0.3), Math.max(1, iw * 0.15), 1);
+        const lblHeight = Math.max(1.2, Math.min(iw, id) * 0.4);
+        setLabelHeight(lbl, lblHeight);
+        lbl.position.set(px + iw / 2, py + ih + lblHeight * 0.7, pz + id / 2);
         this.labelsGroup.add(lbl);
       }
 
