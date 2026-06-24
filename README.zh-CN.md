@@ -22,6 +22,7 @@
 - 重力下沉 + 稳定性校验
 - 跨箱分发或每箱复制
 - 每箱体积利用率 + 4 象限重量分布
+- 箱内障碍物:py3dbp 兼容的 `corner` 立方体 + 通用 AABB 障碍(用于固定结构,或外部代码生成的斜切 ULD 如 LD3 等)
 - TypeScript 优先,ESM,零运行时依赖
 
 完整逐符号 API 文档:**[docs/api/](./docs/api/README.md)**(英文)。

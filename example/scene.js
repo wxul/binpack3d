@@ -63,6 +63,32 @@ function setLabelHeight(sprite, height) {
   sprite.scale.set(aspect * height, height, 1);
 }
 
+/**
+ * Mirror of Bin#buildObstacleBoxes — produce the AABB list (corner cubes +
+ * user obstacles) for rendering. Kept in sync with src/bin.ts by design.
+ */
+function obstacleBoxesFor(binInput, bw, bh, bd) {
+  const boxes = [];
+  const c = binInput.corner ?? 0;
+  if (c > 0) {
+    const cs = [
+      [0, 0, 0],
+      [0, 0, bd - c],
+      [0, bh - c, bd - c],
+      [0, bh - c, 0],
+      [bw - c, bh - c, 0],
+      [bw - c, 0, 0],
+      [bw - c, 0, bd - c],
+      [bw - c, bh - c, bd - c],
+    ];
+    for (const pos of cs) boxes.push({ position: pos, whd: [c, c, c] });
+  }
+  for (const ob of binInput.obstacles ?? []) {
+    boxes.push({ position: ob.position, whd: ob.whd });
+  }
+  return boxes;
+}
+
 function hashColor(seed) {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
@@ -138,10 +164,18 @@ export class Scene {
     this.labelsGroup.visible = visible;
   }
 
-  /** Render the result. `result.bins` is an array of BinResult. */
-  render(result) {
+  /**
+   * Render the pack result. `binInputs` (optional) is the raw BinInput[] used
+   * for the pack — needed to draw injected obstacles (corner cubes, user
+   * obstacles), which don't appear in BinResult.fittedItems.
+   */
+  render(result, binInputs = []) {
     this.clear();
     if (!result || !result.bins || result.bins.length === 0) return;
+
+    // Map BinInput by partno so we can look up corner/obstacles by bin.
+    const inputByPartno = new Map();
+    for (const bi of binInputs) inputByPartno.set(bi.partno, bi);
 
     // Layout bins along X with a gap.
     let cursorX = 0;
@@ -150,6 +184,7 @@ export class Scene {
 
     for (const bin of result.bins) {
       const [bw, bh, bd] = bin.whd;
+      const binInput = inputByPartno.get(bin.partno);
 
       const binBase = new THREE.Group();
       binBase.position.set(cursorX, 0, -bd / 2);
@@ -170,6 +205,24 @@ export class Scene {
       setLabelHeight(binLabel, binLabelHeight);
       binLabel.position.set(bw / 2, bh + binLabelHeight * 0.8, bd / 2);
       binBase.add(binLabel);
+
+      // Obstacles (corner cubes + user-defined). Drawn in dark grey so they
+      // read as "container fixture", not cargo. No label, no outline.
+      if (binInput) {
+        for (const ob of obstacleBoxesFor(binInput, bw, bh, bd)) {
+          const [ow, oh, od] = ob.whd;
+          const [ox, oy, oz] = ob.position;
+          const obMat = new THREE.MeshLambertMaterial({
+            color: '#1a1d24',
+            transparent: true,
+            opacity: 0.85,
+          });
+          const obGeom = new THREE.BoxGeometry(ow, oh, od);
+          const obMesh = new THREE.Mesh(obGeom, obMat);
+          obMesh.position.set(ox + ow / 2, oy + oh / 2, oz + od / 2);
+          binBase.add(obMesh);
+        }
+      }
 
       // Items inside the bin
       for (const item of bin.fittedItems) {

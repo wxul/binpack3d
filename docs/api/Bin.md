@@ -26,7 +26,8 @@ All dimensions and `maxWeight` are stored multiplied by `10 ** numberOfDecimals`
 | `checkStable`         | `boolean`             | Whether to enforce the stability check.                                  |
 | `supportSurfaceRatio` | `number`              | Minimum supported-area ratio for stability (when corners aren't all in). |
 | `putType`             | `1 \| 2`              | Reserved.                                                                |
-| `items`               | `Item[]`              | Items currently placed in this bin (mutated by `putItem`).               |
+| `corner`              | `number`              | Integer-scaled corner-cube edge length. `0` when disabled.               |
+| `items`               | `Item[]`              | Items currently placed in this bin (mutated by `putItem`). After `injectObstacles()`, includes obstacle items with `isObstacle: true`. |
 | `unfittedInBin`       | `Item[]`              | Reserved; currently unused.                                              |
 
 ## Methods
@@ -37,7 +38,13 @@ Returns the bin's volume in integer-scaled units (`whd[0] * whd[1] * whd[2]`).
 
 ### `getTotalWeight(): number`
 
-Returns the sum of `item.weight` over all currently-placed `items`, in integer-scaled units.
+Returns the sum of `item.weight` over all currently-placed `items`, in integer-scaled units. Obstacle items have `weight = 0`, so they don't affect this sum.
+
+### `injectObstacles(): void`
+
+Push the corner cubes (from `BinInput.corner`) and user obstacles (from `BinInput.obstacles`) into `this.items` so they participate as AABB blockers during subsequent `putItem` calls. Idempotent — safe to call multiple times. `pack()` calls this automatically for every bin before placement begins; you only need to call it explicitly if you're driving `putItem` yourself.
+
+Validation of corner size and obstacle bounds/overlap happens in the constructor, not here.
 
 ### `putItem(item: Item, pivot: Vec3): boolean`
 
@@ -105,6 +112,12 @@ console.log(bin.gravityCenter());   // [25, 25, 25, 25] roughly
 - **Coordinate system.** `pivot` is the near-bottom-left corner the item is placed at; the item occupies `[pivot, pivot + dim]` along each axis. The bin's origin is `[0, 0, 0]` and its far-top-right corner is `whd`.
 - **`fixPoint` may move the item** even after `putItem` returns. The position reflected back is the *settled* position, not the original `pivot`.
 - **Stability requires `fixPoint`.** If `fixPoint` is false, `checkStable` is effectively skipped (the heuristic guards against running stability on un-settled items).
+- **Obstacles vs items.** Corner cubes and `obstacles` end up in `bin.items` after `injectObstacles()` runs, but with `isObstacle: true`. They block placements via the same AABB-overlap path as real items, contribute zero weight, and are filtered out of `BinResult.fittedItems` and `BinResult.utilization`. To count just the cargo, use `bin.items.filter(it => !it.isObstacle)`.
+- **Obstacles never bear load.** The stability check excludes `isObstacle` items from the candidate supports — items cannot be considered "supported by" a corner cube or chamfer step. After settling, an item that comes to rest only on an obstacle (no real cargo underneath) is rejected for instability.
+- **Stability paths (in order).** An item placed at `Y > 0` is stable if **any** of these holds (against the real-item supports at its bottom face):
+  1. All 4 bottom corners are over a support, OR
+  2. The item's footprint centroid (center of gravity) sits inside the union of support rectangles — permits balanced overhang (e.g. a wide lid on a narrower base, extending into the empty column above a chamfer), OR
+  3. The supported area is at least `supportSurfaceRatio` of the item footprint.
 
 ## See also
 

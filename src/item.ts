@@ -27,6 +27,12 @@ export class Item {
   rotationType: RotationType = RotationType.WHD;
   /** integer-scaled position of near-bottom-left corner */
   position: Vec3 = [0, 0, 0];
+  /**
+   * Internal: true when this Item is a Bin-injected obstacle (from
+   * BinInput.corner / BinInput.obstacles), not a user item. Excluded from
+   * BinResult.fittedItems and from utilization volume.
+   */
+  isObstacle = false;
 
   constructor(input: ItemInput, numberOfDecimals: number = DEFAULT_NUMBER_OF_DECIMALS) {
     this.partno = input.partno;

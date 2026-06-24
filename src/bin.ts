@@ -11,6 +11,12 @@ function scale(v: number, decimals: number): number {
   return Math.round(v * 10 ** decimals);
 }
 
+interface ObstacleBox {
+  position: Vec3;
+  whd: Vec3;
+  label: string;
+}
+
 export class Bin {
   readonly partno: string;
   readonly whd: Vec3;
@@ -19,6 +25,11 @@ export class Bin {
   readonly checkStable: boolean;
   readonly supportSurfaceRatio: number;
   readonly putType: 1 | 2;
+  readonly corner: number; // integer-scaled
+
+  /** Integer-scaled, validated obstacle AABBs (corner cubes + user obstacles). */
+  private readonly obstacleBoxes: readonly ObstacleBox[];
+  private obstaclesInjected = false;
 
   items: Item[] = [];
   unfittedInBin: Item[] = [];
@@ -35,6 +46,121 @@ export class Bin {
     this.checkStable = input.checkStable ?? true;
     this.supportSurfaceRatio = input.supportSurfaceRatio ?? DEFAULT_SUPPORT_SURFACE_RATIO;
     this.putType = input.putType ?? 1;
+    this.corner = scale(input.corner ?? 0, numberOfDecimals);
+
+    this.obstacleBoxes = this.buildObstacleBoxes(input, numberOfDecimals);
+  }
+
+  /**
+   * Combine corner-cube AABBs and user-provided obstacle AABBs into a single
+   * validated list. Throws on out-of-bounds, oversized corner, or any AABB
+   * overlap between obstacles (touching faces are allowed).
+   */
+  private buildObstacleBoxes(
+    input: BinInput,
+    numberOfDecimals: number,
+  ): readonly ObstacleBox[] {
+    const boxes: ObstacleBox[] = [];
+
+    if ((input.corner ?? 0) < 0) {
+      throw new Error(`Bin "${this.partno}": corner must be >= 0`);
+    }
+
+    if (this.corner > 0) {
+      const minDim = Math.min(this.whd[0], this.whd[1], this.whd[2]);
+      if (this.corner * 2 > minDim) {
+        throw new Error(
+          `Bin "${this.partno}": corner*2 (${this.corner * 2}) exceeds smallest bin dimension (${minDim})`,
+        );
+      }
+      const c = this.corner;
+      const [w, h, d] = this.whd;
+      const cornerPositions: Vec3[] = [
+        [0, 0, 0],
+        [0, 0, d - c],
+        [0, h - c, d - c],
+        [0, h - c, 0],
+        [w - c, h - c, 0],
+        [w - c, 0, 0],
+        [w - c, 0, d - c],
+        [w - c, h - c, d - c],
+      ];
+      for (let i = 0; i < 8; i++) {
+        boxes.push({ position: cornerPositions[i], whd: [c, c, c], label: `corner${i}` });
+      }
+    }
+
+    const userObstacles = input.obstacles ?? [];
+    for (let i = 0; i < userObstacles.length; i++) {
+      const o = userObstacles[i];
+      const pos: Vec3 = [
+        scale(o.position[0], numberOfDecimals),
+        scale(o.position[1], numberOfDecimals),
+        scale(o.position[2], numberOfDecimals),
+      ];
+      const dim: Vec3 = [
+        scale(o.whd[0], numberOfDecimals),
+        scale(o.whd[1], numberOfDecimals),
+        scale(o.whd[2], numberOfDecimals),
+      ];
+      if (dim[0] <= 0 || dim[1] <= 0 || dim[2] <= 0) {
+        throw new Error(`Bin "${this.partno}": obstacle[${i}] has non-positive dimension`);
+      }
+      if (
+        pos[0] < 0 ||
+        pos[1] < 0 ||
+        pos[2] < 0 ||
+        pos[0] + dim[0] > this.whd[0] ||
+        pos[1] + dim[1] > this.whd[1] ||
+        pos[2] + dim[2] > this.whd[2]
+      ) {
+        throw new Error(
+          `Bin "${this.partno}": obstacle[${i}] at ${JSON.stringify(o.position)} size ${JSON.stringify(o.whd)} extends outside bin bounds`,
+        );
+      }
+      boxes.push({ position: pos, whd: dim, label: `obstacle${i}` });
+    }
+
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        if (aabbOverlap(boxes[i].position, boxes[i].whd, boxes[j].position, boxes[j].whd)) {
+          throw new Error(
+            `Bin "${this.partno}": ${boxes[i].label} overlaps ${boxes[j].label}`,
+          );
+        }
+      }
+    }
+
+    return boxes;
+  }
+
+  /**
+   * Push corner-cube and user-obstacle items into `this.items` so subsequent
+   * placements see them as AABB blockers. Idempotent: a second call is a no-op.
+   * Normally called once per bin by the packer; calling from user code is fine
+   * but only matters if `putItem` is being driven directly.
+   */
+  injectObstacles(): void {
+    if (this.obstaclesInjected) return;
+    this.obstaclesInjected = true;
+    for (const box of this.obstacleBoxes) {
+      const it = new Item(
+        {
+          partno: `${this.partno}-${box.label}`,
+          name: box.label,
+          // Already integer-scaled — pass 0 decimals to avoid re-scaling.
+          whd: box.whd,
+          weight: 0,
+          loadbear: 0,
+          updown: true,
+          color: '#000000',
+        },
+        0,
+      );
+      it.position = box.position;
+      it.isObstacle = true;
+      this.items.push(it);
+    }
   }
 
   getVolume(): number {
@@ -190,9 +316,17 @@ export class Bin {
     const y = item.position[Axis.HEIGHT];
     if (y === 0) return true;
 
-    // Items whose top face is at this item's bottom face.
+    // Items whose top face is at this item's bottom face. Obstacles are
+    // excluded — they're container fixtures (corner cubes, chamfer steps),
+    // not cargo, and don't bear load. This forces items to be supported by
+    // real items below them; overhangs into the obstacle region still pass
+    // as long as enough of the item's footprint sits over real supports
+    // (4 corners or the support-area ratio).
     const supports = this.items.filter(
-      (p) => p !== item && p.position[Axis.HEIGHT] + p.getDimension()[Axis.HEIGHT] === y,
+      (p) =>
+        p !== item &&
+        !p.isObstacle &&
+        p.position[Axis.HEIGHT] + p.getDimension()[Axis.HEIGHT] === y,
     );
 
     const x0 = item.position[Axis.WIDTH];
@@ -216,6 +350,24 @@ export class Bin {
       });
 
     if (corners.every(cornerSupported)) return true;
+
+    // Center-of-gravity over support: an item is physically stable if its
+    // footprint centroid sits inside the union of support rectangles, even
+    // when the support area is small. This permits "balanced overhang"
+    // placements — e.g. a wide item resting on a narrower one centered
+    // beneath it — which the 4-corner and area-ratio checks would reject.
+    const cogX = x0 + dim[0] / 2;
+    const cogZ = z0 + dim[2] / 2;
+    const cogSupported = supports.some((p) => {
+      const pd = p.getDimension();
+      return (
+        cogX >= p.position[Axis.WIDTH] &&
+        cogX <= p.position[Axis.WIDTH] + pd[Axis.WIDTH] &&
+        cogZ >= p.position[Axis.DEPTH] &&
+        cogZ <= p.position[Axis.DEPTH] + pd[Axis.DEPTH]
+      );
+    });
+    if (cogSupported) return true;
 
     // Fall back to support-area ratio.
     let supportedArea = 0;

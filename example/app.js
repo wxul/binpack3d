@@ -80,7 +80,7 @@ function runPack() {
     return;
   }
 
-  scene.render(result);
+  scene.render(result, bins);
   renderSummary(result);
 }
 

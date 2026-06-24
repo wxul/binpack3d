@@ -4,6 +4,7 @@ export type {
   BinInput,
   BinResult,
   ItemInput,
+  ObstacleInput,
   PackInput,
   PackOptions,
   PackResult,

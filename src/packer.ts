@@ -23,9 +23,17 @@ function packIntoBin(bin: Bin, items: Item[]): { fitted: Item[]; rejected: Item[
   for (const item of items) {
     let placed = false;
 
-    if (bin.items.length === 0) {
+    // Try the origin pivot for the first real item. Obstacles (corner cubes,
+    // user obstacles) live in bin.items but don't count — without this, with
+    // any obstacle present the first real item would skip (0,0,0) entirely.
+    const hasRealItems = bin.items.some((it) => !it.isObstacle);
+    if (!hasRealItems) {
       placed = bin.putItem(item, makeVec3(0, 0, 0));
-    } else {
+    }
+    // Fall through to pivot-from-placed iteration if origin failed or there
+    // are already real items. Pivots derived from obstacle faces are valid
+    // candidates — they let items pack flush against corner cubes.
+    if (!placed && bin.items.length > 0) {
       outer: for (const placedItem of bin.items) {
         const pd = placedItem.getDimension();
         for (const axis of PIVOT_AXES) {
@@ -116,6 +124,11 @@ export function pack(input: PackInput): PackResult {
   const unfitItems: UnfitItem[] = [];
 
   for (const bin of bins) {
+    // Inject corner cubes and user-defined obstacles before any placement so
+    // they participate in every overlap check. Idempotent — safe to call from
+    // both pack() and direct Bin usage.
+    bin.injectObstacles();
+
     // Try each group as an atomic unit
     for (const [key, members] of groups) {
       // With distribute=true, skip a group once it has been placed
@@ -186,7 +199,10 @@ export function pack(input: PackInput): PackResult {
   }
 
   const binResults: BinResult[] = bins.map((bin) => {
-    const fitted = bin.items.map((it, idx) => toPlaced(it, decimals, idx));
+    // Exclude injected obstacles from user-facing output and utilization.
+    // They're a property of the container, not packed cargo.
+    const realItems = bin.items.filter((it) => !it.isObstacle);
+    const fitted = realItems.map((it, idx) => toPlaced(it, decimals, idx));
     const denom = 10 ** decimals;
     return {
       partno: bin.partno,
@@ -196,7 +212,7 @@ export function pack(input: PackInput): PackResult {
       totalWeight: bin.getTotalWeight() / denom,
       utilization:
         bin.getVolume() > 0
-          ? bin.items.reduce((sum, it) => sum + it.getVolume(), 0) / bin.getVolume()
+          ? realItems.reduce((sum, it) => sum + it.getVolume(), 0) / bin.getVolume()
           : 0,
       gravity: bin.gravityCenter(),
     };
