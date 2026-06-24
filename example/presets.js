@@ -141,29 +141,30 @@ export const presets = [
     return {
       id: 'ld3-chamfer',
       label: 'LD3-style chamfered ULD (stair-step obstacles)',
-      description: 'A chamfered air-cargo container modeled with 8 stair-step AABB obstacles along one bottom edge. The chamfer is non-load-bearing (excluded from stability supports); items can overhang above it if their center of gravity sits over real cargo below.',
+      description: 'A chamfered air-cargo container modeled with 8 stair-step AABB obstacles along one bottom edge. The chamfer is non-load-bearing (excluded from stability supports); items can overhang into the empty column above the chamfer as long as enough of their footprint still sits over real cargo below.',
       bins: [
         // Default stability check (checkStable: true) is intentional — combined
         // with obstacle exclusion, the chamfer can't be used as a support.
-        // supportSurfaceRatio kept at 0.75 default; COG-over-support rule
-        // (added in Bin.isStable) handles the wide-on-narrow overhang case.
+        // Wide-on-narrow overhang relies on the area-ratio path
+        // (supportSurfaceRatio default 0.75), so the base is sized so the lid
+        // covers ≥75% of its own footprint.
         { partno: 'LD3-ish', whd: [W, H, D], maxWeight: 1500, obstacles },
       ],
       items: [
-        // Narrow base — placed first (largest volume). updown:false keeps it
-        // upright. Sits clear of the chamfer at the floor.
-        { partno: 'base', whd: [120, 80, 100], weight: 80, color: '#b06bf0', updown: false },
-        // Wide flat lids — sit on top of the base, overhanging 80cm into the
-        // chamfer column above the bevel. Pass the COG-over-support rule.
+        // Base — placed first (largest volume). updown:false keeps it upright.
+        // Sits clear of the chamfer at the floor (chamfer starts at X=160).
+        // Square footprint (140×140) keeps W/D rotations equivalent, so the
+        // packer can't swap to an orientation that starves the lid of support.
+        { partno: 'base', whd: [140, 80, 140], weight: 80, color: '#b06bf0', updown: false },
+        // Wide flat lids — sit on top of the base at H=80 (chamfer ends there),
+        // overhanging 40cm past the base into the empty column above the
+        // chamfer. 140×100 / 180×100 ≈ 78% support-area ratio clears the 0.75 default.
         { partno: 'lid-1', whd: [180, 40, 100], weight: 40, color: '#4f8cff', updown: false },
         { partno: 'lid-2', whd: [180, 40, 100], weight: 40, color: '#46d2da', updown: false },
-        // Side cargo — fills the chamfer-free corridor next to the base
+        // Side cargo — sits on the lids in the Z-direction corridor above the
+        // base depth, filling out the upper half of the container.
         { partno: 'crate-1', whd: [60, 60, 50], weight: 20, color: '#ff70b3' },
         { partno: 'crate-2', whd: [60, 60, 50], weight: 20, color: '#ff9a40' },
-        // Fillers
-        { partno: 'box-1', whd: [40, 40, 40], weight: 10, color: '#7cd14d' },
-        { partno: 'box-2', whd: [40, 40, 40], weight: 10, color: '#f3d34a' },
-        { partno: 'box-3', whd: [40, 40, 40], weight: 10, color: '#a66a3a' },
       ],
       options: { biggerFirst: true, distributeItems: false, numberOfDecimals: 0 },
     };

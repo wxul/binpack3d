@@ -262,30 +262,28 @@ describe('Bin stability', () => {
     expect(bin.putItem(item, [0, 50, 0])).toBe(false);
   });
 
-  it('center-of-gravity over a narrower support is stable (balanced overhang)', () => {
-    // Default fixPoint=true so checkStable fires (stability needs fixPoint).
-    // Base 120 wide settles to origin; wide lid placed at top settles flush
-    // against the base's top face.
+  it('balanced overhang on a narrower support is rejected (area ratio below threshold)', () => {
+    // Real boxes don't have their mass at the geometric center, so we don't
+    // trust a centroid-over-support check. Stability falls back to area
+    // ratio once the 4-corner check fails.
     const bin = new Bin({ partno: 'B', whd: [200, 200, 100], maxWeight: 1000 }, D);
     bin.putItem(
       new Item({ partno: 'base', whd: [120, 80, 100], weight: 50, updown: false }, D),
       [0, 0, 0],
     );
     // Lid 180 wide: 4-corner fails (extends X=0..180, base only 0..120).
-    // Area ratio = 120/180 = 67% < 75%. COG = X=90, inside base 0..120 → passes.
+    // Area ratio = 120/180 = 67% < 75% → rejected.
     const top = new Item({ partno: 'top', whd: [180, 40, 100], weight: 30, updown: false }, D);
-    expect(bin.putItem(top, [0, 80, 0])).toBe(true);
-    expect(top.position[1]).toBe(80); // settled flush on top of base
+    expect(bin.putItem(top, [0, 80, 0])).toBe(false);
   });
 
-  it('center-of-gravity outside the support fails stability', () => {
+  it('overhang far past the support fails stability', () => {
     const bin = new Bin({ partno: 'B', whd: [200, 200, 100], maxWeight: 1000 }, D);
     bin.putItem(
       new Item({ partno: 'base', whd: [60, 80, 100], weight: 50, updown: false }, D),
       [0, 0, 0],
     );
-    // Lid 180 wide. COG X = 90, base only 0..60 → 90 outside, COG fails.
-    // Area = 60/180 = 33% < 75%. 4-corner also fails. All three paths reject.
+    // Lid 180 wide. Area = 60/180 = 33% < 75%. 4-corner also fails.
     const top = new Item({ partno: 'top', whd: [180, 40, 100], weight: 30, updown: false }, D);
     expect(bin.putItem(top, [0, 80, 0])).toBe(false);
   });

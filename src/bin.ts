@@ -351,24 +351,6 @@ export class Bin {
 
     if (corners.every(cornerSupported)) return true;
 
-    // Center-of-gravity over support: an item is physically stable if its
-    // footprint centroid sits inside the union of support rectangles, even
-    // when the support area is small. This permits "balanced overhang"
-    // placements — e.g. a wide item resting on a narrower one centered
-    // beneath it — which the 4-corner and area-ratio checks would reject.
-    const cogX = x0 + dim[0] / 2;
-    const cogZ = z0 + dim[2] / 2;
-    const cogSupported = supports.some((p) => {
-      const pd = p.getDimension();
-      return (
-        cogX >= p.position[Axis.WIDTH] &&
-        cogX <= p.position[Axis.WIDTH] + pd[Axis.WIDTH] &&
-        cogZ >= p.position[Axis.DEPTH] &&
-        cogZ <= p.position[Axis.DEPTH] + pd[Axis.DEPTH]
-      );
-    });
-    if (cogSupported) return true;
-
     // Fall back to support-area ratio.
     let supportedArea = 0;
     for (const p of supports) {

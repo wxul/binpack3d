@@ -114,10 +114,11 @@ console.log(bin.gravityCenter());   // [25, 25, 25, 25] roughly
 - **Stability requires `fixPoint`.** If `fixPoint` is false, `checkStable` is effectively skipped (the heuristic guards against running stability on un-settled items).
 - **Obstacles vs items.** Corner cubes and `obstacles` end up in `bin.items` after `injectObstacles()` runs, but with `isObstacle: true`. They block placements via the same AABB-overlap path as real items, contribute zero weight, and are filtered out of `BinResult.fittedItems` and `BinResult.utilization`. To count just the cargo, use `bin.items.filter(it => !it.isObstacle)`.
 - **Obstacles never bear load.** The stability check excludes `isObstacle` items from the candidate supports — items cannot be considered "supported by" a corner cube or chamfer step. After settling, an item that comes to rest only on an obstacle (no real cargo underneath) is rejected for instability.
-- **Stability paths (in order).** An item placed at `Y > 0` is stable if **any** of these holds (against the real-item supports at its bottom face):
+- **Stability paths (in order).** An item placed at `Y > 0` is stable if **either** of these holds (against the real-item supports at its bottom face):
   1. All 4 bottom corners are over a support, OR
-  2. The item's footprint centroid (center of gravity) sits inside the union of support rectangles — permits balanced overhang (e.g. a wide lid on a narrower base, extending into the empty column above a chamfer), OR
-  3. The supported area is at least `supportSurfaceRatio` of the item footprint.
+  2. The supported area is at least `supportSurfaceRatio` of the item footprint.
+
+  A geometric-centroid ("center of gravity over support") check was considered and rejected — real cargo doesn't have its mass at the box center, so a centroid-based pass would green-light placements that fall over in practice.
 
 ## See also
 
