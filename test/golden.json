@@ -1,0 +1,54 @@
+{
+  "input": {
+    "bins": [
+      {
+        "partno": "example1",
+        "whd": [5.6875, 10.75, 15.0],
+        "maxWeight": 70.0,
+        "fixPoint": true,
+        "checkStable": true,
+        "supportSurfaceRatio": 0.75
+      }
+    ],
+    "items": [
+      { "partno": "50g [powder 1]",   "name": "test", "whd": [2, 2, 4], "weight": 1, "level": 1, "loadbear": 100, "updown": true, "color": "red" },
+      { "partno": "50g [powder 2]",   "name": "test", "whd": [2, 2, 4], "weight": 2, "level": 1, "loadbear": 100, "updown": true, "color": "blue" },
+      { "partno": "50g [powder 3]",   "name": "test", "whd": [2, 2, 4], "weight": 3, "level": 1, "loadbear": 100, "updown": true, "color": "gray" },
+      { "partno": "50g [powder 4]",   "name": "test", "whd": [2, 2, 4], "weight": 3, "level": 1, "loadbear": 100, "updown": true, "color": "orange" },
+      { "partno": "50g [powder 5]",   "name": "test", "whd": [2, 2, 4], "weight": 3, "level": 1, "loadbear": 100, "updown": true, "color": "lawngreen" },
+      { "partno": "50g [powder 6]",   "name": "test", "whd": [2, 2, 4], "weight": 3, "level": 1, "loadbear": 100, "updown": true, "color": "purple" },
+      { "partno": "50g [powder 7]",   "name": "test", "whd": [1, 1, 5], "weight": 3, "level": 1, "loadbear": 100, "updown": true, "color": "yellow" },
+      { "partno": "250g [powder 8]",  "name": "test", "whd": [4, 4, 2], "weight": 4, "level": 1, "loadbear": 100, "updown": true, "color": "pink" },
+      { "partno": "250g [powder 9]",  "name": "test", "whd": [4, 4, 2], "weight": 5, "level": 1, "loadbear": 100, "updown": true, "color": "brown" },
+      { "partno": "250g [powder 10]", "name": "test", "whd": [4, 4, 2], "weight": 6, "level": 1, "loadbear": 100, "updown": true, "color": "cyan" },
+      { "partno": "250g [powder 11]", "name": "test", "whd": [4, 4, 2], "weight": 7, "level": 1, "loadbear": 100, "updown": true, "color": "olive" },
+      { "partno": "250g [powder 12]", "name": "test", "whd": [4, 4, 2], "weight": 8, "level": 1, "loadbear": 100, "updown": true, "color": "darkgreen" },
+      { "partno": "250g [powder 13]", "name": "test", "whd": [4, 4, 2], "weight": 9, "level": 1, "loadbear": 100, "updown": true, "color": "orange" }
+    ],
+    "options": {
+      "biggerFirst": true,
+      "distributeItems": false,
+      "numberOfDecimals": 0
+    }
+  },
+  "expected": {
+    "fittedCount": 13,
+    "unfitCount": 0,
+    "utilizationApprox": 0.30,
+    "items": [
+      { "partno": "250g [powder 8]",  "position": [0, 0, 0], "rotationType": 0 },
+      { "partno": "250g [powder 9]",  "position": [4, 0, 0], "rotationType": 3 },
+      { "partno": "250g [powder 10]", "position": [0, 4, 0], "rotationType": 0 },
+      { "partno": "250g [powder 11]", "position": [0, 0, 2], "rotationType": 0 },
+      { "partno": "250g [powder 12]", "position": [4, 4, 0], "rotationType": 3 },
+      { "partno": "250g [powder 13]", "position": [0, 0, 4], "rotationType": 3 },
+      { "partno": "50g [powder 1]",   "position": [2, 0, 4], "rotationType": 0 },
+      { "partno": "50g [powder 2]",   "position": [4, 0, 4], "rotationType": 0 },
+      { "partno": "50g [powder 3]",   "position": [0, 8, 0], "rotationType": 3 },
+      { "partno": "50g [powder 4]",   "position": [0, 4, 2], "rotationType": 0 },
+      { "partno": "50g [powder 5]",   "position": [4, 8, 0], "rotationType": 0 },
+      { "partno": "50g [powder 6]",   "position": [2, 2, 4], "rotationType": 0 },
+      { "partno": "50g [powder 7]",   "position": [4, 2, 4], "rotationType": 0 }
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "name": "binpack3d",
+  "version": "0.1.0",
+  "description": "A fast 3D bin packing library for packing boxes into containers with multiple bins. TypeScript support and zero dependencies.",
+  "keywords": [
+    "bin packing",
+    "3d bin packing",
+    "bin-packing",
+    "3d-bin-packing",
+    "packer",
+    "packing",
+    "bin",
+    "3d",
+    "box packing",
+    "container loading",
+    "cuboid",
+    "knapsack",
+    "boxing optimization",
+    "pallet"
+  ],
+  "license": "MIT",
+  "author": "Albert <hi@wxul.top>",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:example": "npm run build && rm -rf _site && mkdir -p _site/dist && cp -r example/. _site/ && cp -r dist/. _site/dist/",
+    "preview:example": "npm run build:example && node scripts/serve.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wxul/binpack3d.git"
+  },
+  "homepage": "https://github.com/wxul/binpack3d#readme",
+  "bugs": {
+    "url": "https://github.com/wxul/binpack3d/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>binpack3d — interactive demo</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.169.0",
+          "three/addons/": "https://esm.sh/three@0.169.0/examples/jsm/",
+          "binpack3d": "./dist/index.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <strong>binpack3d</strong>
+        <span class="subtitle">interactive 3D bin packing demo</span>
+      </div>
+      <nav>
+        <a href="https://github.com/wxul/binpack3d" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.npmjs.com/package/binpack3d" target="_blank" rel="noopener">npm</a>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <aside class="panel input-panel">
+        <div class="row">
+          <label for="preset">Preset</label>
+          <select id="preset"></select>
+          <button id="pack" class="primary">Pack ▶</button>
+        </div>
+
+        <details open>
+          <summary>Bins (JSON)</summary>
+          <textarea id="bins-input" spellcheck="false" rows="6"></textarea>
+        </details>
+
+        <details open>
+          <summary>Items (JSON)</summary>
+          <textarea id="items-input" spellcheck="false" rows="10"></textarea>
+        </details>
+
+        <details>
+          <summary>Options</summary>
+          <div class="options">
+            <label><input type="checkbox" id="opt-biggerFirst" checked /> biggerFirst</label>
+            <label><input type="checkbox" id="opt-distributeItems" /> distributeItems</label>
+            <label>
+              numberOfDecimals
+              <input type="number" id="opt-decimals" value="2" min="0" max="6" />
+            </label>
+          </div>
+        </details>
+
+        <p id="parse-error" class="error" hidden></p>
+
+        <div class="legend">
+          <strong>Legend</strong>
+          <div><span class="swatch outline-red"></span> fragile</div>
+          <div><span class="swatch outline-dashed"></span> nonStackable</div>
+          <div><span class="swatch ring"></span> grouped (same color)</div>
+        </div>
+      </aside>
+
+      <section class="viewer">
+        <canvas id="canvas"></canvas>
+        <div class="viewer-toolbar">
+          <button id="reset-camera">Reset camera</button>
+          <label>
+            <input type="checkbox" id="toggle-labels" /> show load order
+          </label>
+        </div>
+      </section>
+
+      <aside class="panel output-panel">
+        <div id="bin-summary"></div>
+        <div id="unfit-summary"></div>
+      </aside>
+    </main>
+
+    <footer>
+      <span>
+        Port of
+        <a href="https://github.com/jerry800416/3D-bin-packing" target="_blank" rel="noopener">jerry800416/3D-bin-packing</a>
+        · MIT licensed
+      </span>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
