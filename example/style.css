@@ -83,11 +83,20 @@ header nav a {
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   transition: color 80ms;
 }
 header nav a:hover { color: var(--text); }
-header nav a svg { display: block; fill: currentColor; }
+.nav-icon { display: block; height: 16px; width: 16px; }
+/* GitHub SVG ships with no fill (renders black). Brightness-0 then invert
+   to recolor it to match the link's muted text color; brighter on hover. */
+.nav-icon-github {
+  filter: brightness(0) invert(0.58);
+  transition: filter 80ms;
+}
+header nav a:hover .nav-icon-github { filter: brightness(0) invert(0.92); }
+/* npm SVG ships with its own red+white colors — leave them alone. */
+.nav-icon-npm { width: 22px; border-radius: 2px; }
 
 .layout {
   flex: 1;
@@ -100,9 +109,9 @@ header nav a svg { display: block; fill: currentColor; }
   background: var(--panel-bg);
   border-right: 1px solid var(--panel-border);
   padding: 12px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden auto;        /* x: hidden, y: auto */
   min-width: 0;
+  scrollbar-gutter: stable;
 }
 .panel > * { min-width: 0; max-width: 100%; }
 .output-panel {
@@ -120,6 +129,20 @@ header nav a svg { display: block; fill: currentColor; }
 .row > * { min-width: 0; }
 .row label { color: var(--text-muted); font-size: 12px; }
 
+/* Preset row uses grid so the select can shrink freely while the Pack
+   button keeps its intrinsic (text+icon) width — flex shrinking is
+   unreliable across browsers for native <select>. */
+.preset-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.preset-row label { color: var(--text-muted); font-size: 12px; }
+.preset-row select { min-width: 0; width: 100%; }
+.preset-row button { white-space: nowrap; }
+
 select, button, input[type="number"], input[type="text"] {
   background: #1f2433;
   color: var(--text);
@@ -128,15 +151,6 @@ select, button, input[type="number"], input[type="text"] {
   padding: 6px 8px;
   font-family: inherit;
   font-size: 12px;
-}
-.row select {
-  flex: 1 1 auto;
-  min-width: 0;
-  text-overflow: ellipsis;
-}
-.row button {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 input[type="number"] { width: 56px; }
 button {
@@ -179,8 +193,18 @@ textarea {
   font-size: 11px;
   line-height: 1.5;
   resize: vertical;
+  /* Override macOS overlay scrollbar default in textareas. */
+  scrollbar-color: #2a3148 transparent;
+  scrollbar-width: thin;
 }
 textarea:focus { outline: 1px solid var(--accent); }
+textarea::-webkit-scrollbar { width: 8px; height: 8px; }
+textarea::-webkit-scrollbar-track { background: transparent; }
+textarea::-webkit-scrollbar-thumb {
+  background: #2a3148;
+  border-radius: 4px;
+}
+textarea::-webkit-scrollbar-thumb:hover { background: #3a425e; }
 
 .options {
   padding: 8px 10px;
