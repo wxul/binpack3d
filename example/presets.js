@@ -103,6 +103,74 @@ export const presets = [
   },
 
   {
+    id: 'corner',
+    label: 'Container corner (py3dbp compatible)',
+    description: 'Eight cube corners pre-placed at the bin\'s vertices. Cargo must pack around them.',
+    bins: [
+      { partno: 'crate-with-corners', whd: [80, 80, 80], maxWeight: 200, corner: 8 },
+    ],
+    items: [
+      { partno: 'mid-1', whd: [40, 40, 40], weight: 8, color: '#4f8cff' },
+      { partno: 'mid-2', whd: [40, 40, 40], weight: 8, color: '#46d2da' },
+      { partno: 'mid-3', whd: [40, 40, 40], weight: 8, color: '#ff70b3' },
+      { partno: 'small-1', whd: [20, 20, 20], weight: 2, color: '#7cd14d' },
+      { partno: 'small-2', whd: [20, 20, 20], weight: 2, color: '#f3d34a' },
+      { partno: 'small-3', whd: [20, 20, 20], weight: 2, color: '#b06bf0' },
+      { partno: 'small-4', whd: [20, 20, 20], weight: 2, color: '#ff9a40' },
+    ],
+    options: { biggerFirst: true, distributeItems: false, numberOfDecimals: 0 },
+  },
+
+  // LD3 demo. Bin uses simplified round dimensions (200×160×150 cm) — real
+  // LD3 outside is ~200.7×162.6×153.4 cm. The chamfer along one bottom edge
+  // is approximated by 8 stair-step AABBs (10 cm steps). Real ULDs would use
+  // finer steps; 10 cm keeps the demo readable.
+  (() => {
+    const W = 200, H = 160, D = 150;
+    const CHAMFER_W = 40;   // bottom cut depth (along +W axis, inward)
+    const CHAMFER_H = 80;   // height over which the chamfer tapers
+    const STEPS = 8;
+    const stepH = CHAMFER_H / STEPS;
+    const obstacles = Array.from({ length: STEPS }, (_, i) => {
+      const widthAtStep = CHAMFER_W * (1 - i / STEPS);
+      return {
+        position: [W - widthAtStep, i * stepH, 0],
+        whd: [widthAtStep, stepH, D],
+      };
+    });
+    return {
+      id: 'ld3-chamfer',
+      label: 'LD3-style chamfered ULD (stair-step obstacles)',
+      description: 'A chamfered air-cargo container modeled with 8 stair-step AABB obstacles along one bottom edge. The chamfer is non-load-bearing (excluded from stability supports); items can overhang into the empty column above the chamfer as long as enough of their footprint still sits over real cargo below.',
+      bins: [
+        // Default stability check (checkStable: true) is intentional — combined
+        // with obstacle exclusion, the chamfer can't be used as a support.
+        // Wide-on-narrow overhang relies on the area-ratio path
+        // (supportSurfaceRatio default 0.75), so the base is sized so the lid
+        // covers ≥75% of its own footprint.
+        { partno: 'LD3-ish', whd: [W, H, D], maxWeight: 1500, obstacles },
+      ],
+      items: [
+        // Base — placed first (largest volume). updown:false keeps it upright.
+        // Sits clear of the chamfer at the floor (chamfer starts at X=160).
+        // Square footprint (140×140) keeps W/D rotations equivalent, so the
+        // packer can't swap to an orientation that starves the lid of support.
+        { partno: 'base', whd: [140, 80, 140], weight: 80, color: '#b06bf0', updown: false },
+        // Wide flat lids — sit on top of the base at H=80 (chamfer ends there),
+        // overhanging 40cm past the base into the empty column above the
+        // chamfer. 140×100 / 180×100 ≈ 78% support-area ratio clears the 0.75 default.
+        { partno: 'lid-1', whd: [180, 40, 100], weight: 40, color: '#4f8cff', updown: false },
+        { partno: 'lid-2', whd: [180, 40, 100], weight: 40, color: '#46d2da', updown: false },
+        // Side cargo — sits on the lids in the Z-direction corridor above the
+        // base depth, filling out the upper half of the container.
+        { partno: 'crate-1', whd: [60, 60, 50], weight: 20, color: '#ff70b3' },
+        { partno: 'crate-2', whd: [60, 60, 50], weight: 20, color: '#ff9a40' },
+      ],
+      options: { biggerFirst: true, distributeItems: false, numberOfDecimals: 0 },
+    };
+  })(),
+
+  {
     id: 'upright',
     label: 'Upright only (updown: false)',
     description: 'These items cannot lie on their side — only 2 rotations are tried.',

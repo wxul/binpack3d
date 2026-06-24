@@ -22,6 +22,7 @@ A practical 3D bin packing library for placing cuboid items into one or more con
 - Gravity settle + stability check
 - Distribute across bins or duplicate per bin
 - Per-bin volume utilization + 4-quadrant weight balance
+- In-bin obstacles: py3dbp-compatible `corner` cubes + generic AABB blockers for fixtures or chamfered ULDs (LD3 etc., built externally)
 - TypeScript-first, ESM, zero runtime dependencies
 
 Full per-symbol API: **[docs/api/](./docs/api/README.md)**.

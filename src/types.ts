@@ -25,6 +25,18 @@ export interface ItemInput {
   group?: string;
 }
 
+/**
+ * Axis-aligned obstacle inside a bin. Acts as a pre-placed solid block that
+ * real items must pack around. Useful for representing wheel wells, posts, or
+ * stair-stepped approximations of chamfered container walls (e.g. ULDs).
+ */
+export interface ObstacleInput {
+  /** Near-bottom-left corner inside the bin (input units, e.g. cm). */
+  position: Vec3;
+  /** width, height, depth (input units). */
+  whd: Vec3;
+}
+
 export interface BinInput {
   partno: string;
   /** width, height, depth (floats, in input units e.g. cm) */
@@ -38,6 +50,18 @@ export interface BinInput {
   supportSurfaceRatio?: number;
   /** Reserved for future open-top container behavior; default 1 (general). */
   putType?: 1 | 2;
+  /**
+   * py3dbp-compatible shorthand: place a `corner × corner × corner` solid
+   * cube at each of the bin's 8 vertices before packing. Real items must
+   * pack around them. `0` (default) disables the feature.
+   */
+  corner?: number;
+  /**
+   * Additional user-defined AABB obstacles, injected before packing. Items
+   * cannot overlap them. The library ships no container presets — generate
+   * the obstacle list yourself for ULDs (LD3 chamfer, etc.) or fixtures.
+   */
+  obstacles?: ObstacleInput[];
 }
 
 export interface PackOptions {

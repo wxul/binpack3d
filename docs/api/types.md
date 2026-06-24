@@ -5,7 +5,7 @@ All exported types. Imported with the `type` keyword:
 ```ts
 import type {
   PackInput, PackOptions, PackResult,
-  BinInput, BinResult, ItemInput, PlacedItem, UnfitItem,
+  BinInput, BinResult, ItemInput, ObstacleInput, PlacedItem, UnfitItem,
   Vec3,
 } from 'binpack3d';
 ```
@@ -69,6 +69,8 @@ interface BinInput {
   checkStable?: boolean;
   supportSurfaceRatio?: number;
   putType?: 1 | 2;
+  corner?: number;
+  obstacles?: ObstacleInput[];
 }
 ```
 
@@ -81,6 +83,30 @@ interface BinInput {
 | `checkStable`         |          | `true`  | Reject placements lacking 4-corner support or `supportSurfaceRatio` of supported area.   |
 | `supportSurfaceRatio` |          | `0.75`  | Stability threshold (0..1) when corners aren't all supported.                            |
 | `putType`             |          | `1`     | Reserved — future open-top container behavior. Not currently consulted by the algorithm. |
+| `corner`              |          | `0`     | py3dbp-compatible shorthand. Place a `corner × corner × corner` cube at each of the bin's 8 vertices before packing. Must satisfy `corner*2 ≤ min(whd)`. `0` disables. |
+| `obstacles`           |          | `[]`    | Extra user-defined AABB blockers (see [`ObstacleInput`](#obstacleinput)). Combined with `corner`-derived cubes; pairwise non-overlap is enforced. |
+
+---
+
+## `ObstacleInput`
+
+```ts
+interface ObstacleInput {
+  position: Vec3;
+  whd: Vec3;
+}
+```
+
+Axis-aligned solid block injected into the bin before packing. Real items must not overlap it. Excluded from `BinResult.fittedItems` and from `utilization` volume.
+
+| Field      | Required | Description                                                                                  |
+| ---------- | -------- | -------------------------------------------------------------------------------------------- |
+| `position` | ✓        | Near-bottom-left corner inside the bin (same units as `BinInput.whd`).                       |
+| `whd`      | ✓        | `[width, height, depth]`. All > 0. The obstacle must fit entirely inside the bin.            |
+
+Validation runs at `Bin` construction. Throws on out-of-bounds, non-positive dimension, or any AABB overlap with another obstacle or with a `corner`-derived cube.
+
+This is the only obstacle primitive the library exposes — no container presets ship in-tree. Build chamfered ULDs (LD3 etc.), wheel wells, or posts by generating a list of AABBs that approximate the geometry (a stair-step is a good way to model a flat diagonal cut with AABB-only collision).
 
 ---
 

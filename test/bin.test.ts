@@ -69,6 +69,226 @@ describe('Bin fixPoint', () => {
   });
 });
 
+describe('Bin corner', () => {
+  it('does not inject anything when corner=0 (default)', () => {
+    const bin = new Bin({ partno: 'B', whd: [100, 100, 100], maxWeight: 1000 }, D);
+    bin.injectObstacles();
+    expect(bin.items).toHaveLength(0);
+  });
+
+  it('injects 8 corner cubes at the 8 bin vertices when corner>0', () => {
+    const bin = new Bin({ partno: 'B', whd: [100, 100, 100], maxWeight: 1000, corner: 10 }, D);
+    bin.injectObstacles();
+    expect(bin.items).toHaveLength(8);
+    expect(bin.items.every((it) => it.isObstacle)).toBe(true);
+    // Every obstacle's AABB must lie at a bin vertex
+    const vertices = new Set([
+      [0, 0, 0], [0, 0, 90], [0, 90, 0], [0, 90, 90],
+      [90, 0, 0], [90, 0, 90], [90, 90, 0], [90, 90, 90],
+    ].map((v) => v.join(',')));
+    for (const it of bin.items) {
+      expect(vertices.has(it.position.join(','))).toBe(true);
+      expect(it.getDimension()).toEqual([10, 10, 10]);
+      expect(it.weight).toBe(0);
+    }
+  });
+
+  it('injectObstacles is idempotent', () => {
+    const bin = new Bin({ partno: 'B', whd: [100, 100, 100], maxWeight: 1000, corner: 5 }, D);
+    bin.injectObstacles();
+    bin.injectObstacles();
+    bin.injectObstacles();
+    expect(bin.items).toHaveLength(8);
+  });
+
+  it('blocks items from occupying corner cube positions', () => {
+    const bin = new Bin({ partno: 'B', whd: [100, 100, 100], maxWeight: 1000, corner: 10 }, D);
+    bin.injectObstacles();
+    const item = new Item({ partno: 'I', whd: [10, 10, 10], weight: 1 }, D);
+    // (0,0,0) is occupied by a corner cube — direct placement must fail.
+    expect(bin.putItem(item, [0, 0, 0])).toBe(false);
+    // But it fits flush against the (0,0,0) cube on the +W face.
+    expect(bin.putItem(item, [10, 0, 0])).toBe(true);
+  });
+
+  it('throws when corner is negative', () => {
+    expect(
+      () => new Bin({ partno: 'B', whd: [100, 100, 100], maxWeight: 1000, corner: -1 }, D),
+    ).toThrow(/corner/);
+  });
+
+  it('throws when corner*2 exceeds smallest dimension', () => {
+    expect(
+      () => new Bin({ partno: 'B', whd: [100, 100, 50], maxWeight: 1000, corner: 26 }, D),
+    ).toThrow(/corner/);
+  });
+
+  it('allows corner*2 == smallest dimension (cubes touch faces)', () => {
+    // Touching faces are not overlap — should succeed.
+    expect(
+      () => new Bin({ partno: 'B', whd: [100, 100, 50], maxWeight: 1000, corner: 25 }, D),
+    ).not.toThrow();
+  });
+});
+
+describe('Bin obstacles', () => {
+  it('injects user-defined obstacles', () => {
+    const bin = new Bin(
+      {
+        partno: 'B',
+        whd: [100, 100, 100],
+        maxWeight: 1000,
+        obstacles: [{ position: [40, 0, 40], whd: [20, 20, 20] }],
+      },
+      D,
+    );
+    bin.injectObstacles();
+    expect(bin.items).toHaveLength(1);
+    expect(bin.items[0].isObstacle).toBe(true);
+    expect(bin.items[0].position).toEqual([40, 0, 40]);
+    expect(bin.items[0].getDimension()).toEqual([20, 20, 20]);
+  });
+
+  it('blocks items that would overlap an obstacle', () => {
+    const bin = new Bin(
+      {
+        partno: 'B',
+        whd: [100, 100, 100],
+        maxWeight: 1000,
+        obstacles: [{ position: [40, 0, 40], whd: [20, 20, 20] }],
+      },
+      D,
+    );
+    bin.injectObstacles();
+    const item = new Item(
+      { partno: 'I', whd: [30, 30, 30], weight: 1 },
+      D,
+    );
+    // (35, 0, 35)..(65, 30, 65) overlaps the obstacle (40,0,40)..(60,20,60)
+    expect(
+      bin.putItem(
+        new Item({ partno: 'X', whd: [30, 30, 30], weight: 1 }, D),
+        [35, 0, 35],
+      ),
+    ).toBe(false);
+    // Adjacent placement should succeed.
+    expect(bin.putItem(item, [0, 0, 0])).toBe(true);
+  });
+
+  it('throws when an obstacle extends outside the bin', () => {
+    expect(
+      () =>
+        new Bin(
+          {
+            partno: 'B',
+            whd: [100, 100, 100],
+            maxWeight: 1000,
+            obstacles: [{ position: [90, 0, 0], whd: [20, 10, 10] }],
+          },
+          D,
+        ),
+    ).toThrow(/outside bin bounds/);
+  });
+
+  it('throws on non-positive obstacle dimensions', () => {
+    expect(
+      () =>
+        new Bin(
+          {
+            partno: 'B',
+            whd: [100, 100, 100],
+            maxWeight: 1000,
+            obstacles: [{ position: [0, 0, 0], whd: [0, 10, 10] }],
+          },
+          D,
+        ),
+    ).toThrow(/non-positive/);
+  });
+
+  it('throws when two obstacles overlap', () => {
+    expect(
+      () =>
+        new Bin(
+          {
+            partno: 'B',
+            whd: [100, 100, 100],
+            maxWeight: 1000,
+            obstacles: [
+              { position: [10, 10, 10], whd: [20, 20, 20] },
+              { position: [20, 20, 20], whd: [20, 20, 20] },
+            ],
+          },
+          D,
+        ),
+    ).toThrow(/overlap/);
+  });
+
+  it('throws when a user obstacle overlaps an injected corner cube', () => {
+    expect(
+      () =>
+        new Bin(
+          {
+            partno: 'B',
+            whd: [100, 100, 100],
+            maxWeight: 1000,
+            corner: 10,
+            obstacles: [{ position: [0, 0, 0], whd: [5, 5, 5] }],
+          },
+          D,
+        ),
+    ).toThrow(/overlap/);
+  });
+});
+
+describe('Bin stability', () => {
+  it('obstacles do not count as supports — items cannot rest on a chamfer/corner', () => {
+    // 100×100×100 bin, single obstacle at (0,0,0)..(50,50,50) acting like
+    // a chamfer block. With obstacles excluded from supports, an item
+    // placed directly on top with no real cargo below must fail stability.
+    const bin = new Bin(
+      {
+        partno: 'B',
+        whd: [100, 100, 100],
+        maxWeight: 1000,
+        obstacles: [{ position: [0, 0, 0], whd: [50, 50, 50] }],
+      },
+      D,
+    );
+    bin.injectObstacles();
+    // Item exactly on top of the obstacle: footprint fully covered by the
+    // obstacle's top face, but obstacle is excluded from supports → no
+    // real support → stability check rejects.
+    const item = new Item({ partno: 'I', whd: [50, 10, 50], weight: 5 }, D);
+    expect(bin.putItem(item, [0, 50, 0])).toBe(false);
+  });
+
+  it('balanced overhang on a narrower support is rejected (area ratio below threshold)', () => {
+    // Real boxes don't have their mass at the geometric center, so we don't
+    // trust a centroid-over-support check. Stability falls back to area
+    // ratio once the 4-corner check fails.
+    const bin = new Bin({ partno: 'B', whd: [200, 200, 100], maxWeight: 1000 }, D);
+    bin.putItem(
+      new Item({ partno: 'base', whd: [120, 80, 100], weight: 50, updown: false }, D),
+      [0, 0, 0],
+    );
+    // Lid 180 wide: 4-corner fails (extends X=0..180, base only 0..120).
+    // Area ratio = 120/180 = 67% < 75% → rejected.
+    const top = new Item({ partno: 'top', whd: [180, 40, 100], weight: 30, updown: false }, D);
+    expect(bin.putItem(top, [0, 80, 0])).toBe(false);
+  });
+
+  it('overhang far past the support fails stability', () => {
+    const bin = new Bin({ partno: 'B', whd: [200, 200, 100], maxWeight: 1000 }, D);
+    bin.putItem(
+      new Item({ partno: 'base', whd: [60, 80, 100], weight: 50, updown: false }, D),
+      [0, 0, 0],
+    );
+    // Lid 180 wide. Area = 60/180 = 33% < 75%. 4-corner also fails.
+    const top = new Item({ partno: 'top', whd: [180, 40, 100], weight: 30, updown: false }, D);
+    expect(bin.putItem(top, [0, 80, 0])).toBe(false);
+  });
+});
+
 describe('Bin gravityCenter', () => {
   it('returns equal quadrants when one centered item is placed', () => {
     const bin = new Bin({ partno: 'B', whd: [100, 100, 100], maxWeight: 1000 }, D);

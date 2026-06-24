@@ -1,6 +1,6 @@
 {
   "name": "binpack3d",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A fast 3D bin packing library for packing boxes into containers with multiple bins. TypeScript support and zero dependencies.",
   "keywords": [
     "bin packing",
